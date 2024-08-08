@@ -1,3 +1,6 @@
+using CoreApiInNet.Configurations;
+using CoreApiInNet.Data;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +12,12 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+string connection = builder.Configuration.GetConnectionString("ListingDbConnectionString");
+builder.Services.AddDbContext<ModelDbContext>(options =>
+{
+    options.UseSqlServer(connection);
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Allow",
@@ -19,13 +28,14 @@ builder.Services.AddCors(options =>
 
 builder.Host.UseSerilog((ctx, lc) => lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
 
-
+builder.Services.AddAutoMapper(typeof(MapperConfig));
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }
