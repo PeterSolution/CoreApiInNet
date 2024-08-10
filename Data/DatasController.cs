@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using CoreApiInNet.Model;
 using AutoMapper;
+using CoreApiInNet.Contracts;
 
 namespace CoreApiInNet.Data
 {
@@ -14,32 +15,33 @@ namespace CoreApiInNet.Data
     [Route("api/datas")]
     public class DatasController : ControllerBase
     {
-        private readonly ModelDbContext _context;
         private readonly IMapper mapper;
+        private readonly InterfaceDataRepository dataRepository;
 
-        public DatasController(ModelDbContext context,IMapper mapper)
+        public DatasController(IMapper mapper, InterfaceDataRepository dataRepository)
         {
-            _context = context;
+
             this.mapper = mapper;
+            this.dataRepository = dataRepository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            return _context.DataModel != null ?
-                Ok(await _context.DataModel.ToListAsync()) :
+            return dataRepository.GetAllAsync != null ?
+                Ok(await dataRepository.GetAllAsync()) :
                 Problem("Entity set 'ModelDbContext.DataModel' is null.");
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            if (_context.DataModel == null)
+            if (dataRepository.GetAsync(id) == null)
             {
                 return NotFound();
             }
 
-            var dbModelData = await _context.DataModel.FindAsync(id);
+            var dbModelData = await dataRepository.GetAsync(id);
             if (dbModelData == null)
             {
                 return NotFound();
@@ -55,16 +57,16 @@ namespace CoreApiInNet.Data
             {
                 return BadRequest(ModelState);
             }
-            using (var transaction = await _context.Database.BeginTransactionAsync())
+            var dbModelData = mapper.Map<DbModelData>(model);
+            using (var transaction = await dataRepository.StartTransaction())
             {
                 /*DbModelData dbModelDataold = new DbModelData();
                 dbModelDataold.data = model.data;
                 dbModelDataold.IdUser = model.IdUser;*/
 
-                var dbModelData = mapper.Map<DbModelData>(model);
 
-                _context.Add(dbModelData);
-                await _context.SaveChangesAsync();
+
+                await dataRepository.AddAsync(dbModelData);
                 await transaction.CommitAsync();
                 return CreatedAtAction(nameof(GetById), new { id = dbModelData.IdData }, dbModelData);
             }
@@ -72,60 +74,50 @@ namespace CoreApiInNet.Data
         [HttpPut]
         public async Task<IActionResult> Update(FullDataModel dbModelData)
         {
-            if(DbModelDataExists(dbModelData.id))
+
+            using (var transaction = await dataRepository.StartTransaction())
             {
-                using (var transaction = await _context.Database.BeginTransactionAsync())
+                try
                 {
-                    try
-                    {
-                        
-                        DbModelData dbmodel=_context.DataModel.Find(dbModelData.id);
-                        mapper.Map(dbModelData, dbmodel); 
-                        //_context.Update(dbModelData);
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
-                        return Ok(dbmodel);
-                    }
-                    catch (DbUpdateConcurrencyException)
-                    {
-                        if (!DbModelDataExists(dbModelData.id))
-                        {
-                            return NotFound();
-                        }
-                        else
-                        {
-                            throw;
-                        }
-                    }
+
+                    DbModelData dbmodel = await dataRepository.GetAsync(dbModelData.id);
+                    mapper.Map(dbModelData, dbmodel);
+                    //_context.Update(dbModelData);
+                    await dataRepository.UpdateAsync(dbmodel);
+                    await transaction.CommitAsync();
+                    return Ok(dbmodel);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+
+                    return NotFound();
                 }
             }
 
-            
 
-            return NoContent();
+
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            
-            var dbModelData = await _context.DataModel.FindAsync(id);
+
+            var dbModelData = await dataRepository.GetAsync(id);
             if (dbModelData == null)
             {
                 return NotFound();
             }
-            using (var transaction = await _context.Database.BeginTransactionAsync())
+            using (var transaction = await dataRepository.StartTransaction())
             {
-                _context.DataModel.Remove(dbModelData);
-                await _context.SaveChangesAsync();
+                await dataRepository.DeleteAsync(id);
                 await transaction.CommitAsync();
                 return Ok();
             }
         }
 
-        private bool DbModelDataExists(int id)
+        /*private bool DbModelDataExists(int id)
         {
             return (_context.DataModel?.Any(e => e.IdData == id)).GetValueOrDefault();
-        }
+        }*/
     }
 }

@@ -1,5 +1,7 @@
 using CoreApiInNet.Configurations;
+using CoreApiInNet.Contracts;
 using CoreApiInNet.Data;
+using CoreApiInNet.Repository;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -29,6 +31,8 @@ builder.Services.AddCors(options =>
 builder.Host.UseSerilog((ctx, lc) => lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
 
 builder.Services.AddAutoMapper(typeof(MapperConfig));
+
+builder.Services.AddScoped<InterfaceDataRepository, DataRepository>();
 
 var app = builder.Build();
 
