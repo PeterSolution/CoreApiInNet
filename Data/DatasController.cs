@@ -30,7 +30,7 @@ namespace CoreApiInNet.Data
         {
             return dataRepository.GetAllAsync != null ?
                 Ok(await dataRepository.GetAllAsync()) :
-                Problem("Entity set 'ModelDbContext.DataModel' is null.");
+                Problem("Database is empty.");
         }
 
         [HttpGet("{id}")]
@@ -81,9 +81,20 @@ namespace CoreApiInNet.Data
                 {
 
                     DbModelData dbmodel = await dataRepository.GetAsync(dbModelData.id);
+                    if(dbmodel == null)
+                    {
+                        return NotFound();
+                    }
                     mapper.Map(dbModelData, dbmodel);
                     //_context.Update(dbModelData);
-                    await dataRepository.UpdateAsync(dbmodel);
+                    try
+                    {
+                        await dataRepository.UpdateAsync(dbmodel);
+                    }
+                    catch (Exception ex)
+                    {
+                        return NotFound(ex);
+                    }
                     await transaction.CommitAsync();
                     return Ok(dbmodel);
                 }

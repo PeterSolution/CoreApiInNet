@@ -33,6 +33,7 @@ builder.Host.UseSerilog((ctx, lc) => lc.WriteTo.Console().ReadFrom.Configuration
 builder.Services.AddAutoMapper(typeof(MapperConfig));
 
 builder.Services.AddScoped<InterfaceDataRepository, DataRepository>();
+builder.Services.AddScoped<InterfaceUserRepository, UserRepository>();
 
 var app = builder.Build();
 

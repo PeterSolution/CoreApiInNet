@@ -1,6 +1,11 @@
 ﻿using CoreApiInNet.Model;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using CoreApiInNet.Contracts;
+using CoreApiInNet.Repository;
+using CoreApiInNet.Configurations;
+using System.Reflection;
+using AutoMapper;
 
 namespace CoreApiInNet.Data
 {
@@ -8,77 +13,122 @@ namespace CoreApiInNet.Data
     [Route("api/users")]
     public class UsersController : ControllerBase
     {
-        private readonly ModelDbContext _context;
 
-        public UsersController(ModelDbContext context)
+        public InterfaceUserRepository UserRepository;
+
+        public IMapper Mapper;
+
+        public UsersController(InterfaceUserRepository userRepository, IMapper mapper)
         {
-            _context = context;
+            UserRepository = userRepository;
+            Mapper = mapper;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<ActionResult<IEnumerable<DbModelUser>>> GetAll()
         {
-            return _context.UserModel != null ?
-                Ok(await _context.UserModel.ToListAsync()) :
-                Problem("Entity set 'ModelDbContext.UserModel' is null.");
+            var users = await UserRepository.GetAllAsync();
+            return Ok(Mapper.Map<List<DbModelUser>>(users));
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<ActionResult<DbModelUser>> GetById(int id)
         {
-            if (_context.UserModel == null)
+            if (UserRepository.GetAsync == null)
             {
                 return NotFound();
             }
-            var dbModelUser = await _context.UserModel.FindAsync(id);
+            var dbModelUser = await UserRepository.GetAsync(id);
             if (dbModelUser == null)
             {
                 return NotFound();
             }
-            return Ok(dbModelUser);
+            return Ok(Mapper.Map<DbModelUser>(dbModelUser));
         }
 
         [HttpPost]
         public async Task<IActionResult> Create(HelpingModelUser model)
         {
-            
-            DbModelUser dbModelUser = new DbModelUser();
-            dbModelUser.Name = model.Name;
-            dbModelUser.password = model.password;
-            _context.Add(dbModelUser);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetById), new { id = dbModelUser.ID }, dbModelUser);
+            using (var transaction = await UserRepository.StartTransaction())
+            {
+                /*DbModelUser dbModelUser = new DbModelUser();
+                dbModelUser.Name = model.Name;
+                dbModelUser.password = model.password;*/
+                var user = Mapper.Map<DbModelUser>(model);
+                await UserRepository.AddAsync(user);
+                await transaction.CommitAsync();
+                return CreatedAtAction(nameof(GetById), new { id = user.ID }, user);
+            }
         }
 
         [HttpPut]
         public async Task<IActionResult> Update(DbModelUser dbModelUser)
         {
-            if (DbModelUserExists(dbModelUser.ID))
+            // Pobierz istniejącego użytkownika
+            /*var existingUser = await UserRepository.GetAsync(dbModelUser.ID);
+            if (existingUser == null)
             {
-                _context.Update(dbModelUser);
-                await _context.SaveChangesAsync();
-                
+                return NotFound();
             }
 
-            return NoContent();
+            using var transaction = await UserRepository.StartTransaction();
+            try
+            {
+                // Aktualizuj właściwości istniejącego użytkownika
+                // Możesz użyć AutoMapper lub zaktualizować ręcznie
+                existingUser.Name = dbModelUser.Name;
+                existingUser.password = dbModelUser.password;
+                // ... zaktualizuj pozostałe właściwości
+
+                await UserRepository.UpdateAsync(existingUser);
+                await transaction.CommitAsync();
+                return Ok(existingUser);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                // Logowanie błędu
+                return StatusCode(500, "");
+            }*/
+            var dbModelUserr = await UserRepository.GetAsync(dbModelUser.ID) ;
+
+            if (dbModelUserr == null)
+            {
+                return NotFound();
+            }
+
+            using (var transaction = await UserRepository.StartTransaction())
+            {
+
+                /*dbModelUserr.Name=dbModelUser.Name;
+                dbModelUserr.password=dbModelUser.password;*/
+
+                Mapper.Map(dbModelUser, dbModelUserr);
+
+                await UserRepository.UpdateAsync(dbModelUserr);
+                await transaction.CommitAsync();
+                return Ok(dbModelUserr);
+
+            }
         }
 
         [HttpDelete]
         public async Task<IActionResult> Delete(int id)
         {
-            var dbModelUser = await _context.UserModel.FindAsync(id);
-            if (dbModelUser == null)
+            using (var transaction = await UserRepository.StartTransaction())
             {
-                return NotFound();
+                var dbModelUser = await UserRepository.GetAsync(id);
+                if (dbModelUser == null)
+                {
+                    await transaction.CommitAsync();
+                    return NotFound();
+                }
+                UserRepository.DeleteAsync(id);
+                await transaction.CommitAsync();
+                return Ok();
             }
-            _context.UserModel.Remove(dbModelUser);
-            await _context.SaveChangesAsync();
-            return Ok();
-        }
 
-        private bool DbModelUserExists(int id)
-        {
-            return (_context.UserModel?.Any(e => e.ID == id)).GetValueOrDefault();
+
         }
     }
 }
