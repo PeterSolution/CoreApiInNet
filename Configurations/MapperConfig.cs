@@ -1,6 +1,8 @@
 ﻿using AutoMapper;
 using CoreApiInNet.Data;
 using CoreApiInNet.Model;
+using CoreApiInNet.Users;
+using Microsoft.AspNetCore.Identity;
 
 namespace CoreApiInNet.Configurations
 {
@@ -11,6 +13,7 @@ namespace CoreApiInNet.Configurations
             CreateMap<DbModelData, HelpingModelData>().ReverseMap();
             CreateMap<FullDataModel, DbModelData>().ReverseMap();
 
+            CreateMap<ApiUserDto, IdentityUser>().ReverseMap();
         }
     }
 }

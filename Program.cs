@@ -1,7 +1,9 @@
 using CoreApiInNet.Configurations;
 using CoreApiInNet.Contracts;
 using CoreApiInNet.Data;
+using CoreApiInNet.Model;
 using CoreApiInNet.Repository;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -34,6 +36,11 @@ builder.Services.AddAutoMapper(typeof(MapperConfig));
 
 builder.Services.AddScoped<InterfaceDataRepository, DataRepository>();
 builder.Services.AddScoped<InterfaceUserRepository, UserRepository>();
+builder.Services.AddScoped<InterfaceAuthManager, AuthManager>();
+
+builder.Services.AddIdentityCore<IdentityUser>()
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<ModelDbContext>();
 
 var app = builder.Build();
 
