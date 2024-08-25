@@ -1,4 +1,5 @@
-﻿using CoreApiInNet.Users;
+﻿using CoreApiInNet.Model;
+using CoreApiInNet.Users;
 using Microsoft.AspNetCore.Identity;
 
 namespace CoreApiInNet.Contracts
@@ -6,5 +7,6 @@ namespace CoreApiInNet.Contracts
     public interface InterfaceAuthManager
     {
         Task<IEnumerable<IdentityError>> Register(ApiUserDto userDto);
+        Task<AuthResponse> login(ApiUserDto userDto);
     }
 }

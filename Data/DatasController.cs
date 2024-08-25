@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using CoreApiInNet.Model;
 using AutoMapper;
 using CoreApiInNet.Contracts;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CoreApiInNet.Data
 {
@@ -28,29 +29,38 @@ namespace CoreApiInNet.Data
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            return dataRepository.GetAllAsync != null ?
+
+            using (var transaction = await dataRepository.StartTransaction())
+            {
+                return dataRepository.GetAllAsync != null ?
                 Ok(await dataRepository.GetAllAsync()) :
                 Problem("Database is empty.");
+            }
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            if (dataRepository.GetAsync(id) == null)
-            {
-                return NotFound();
-            }
 
-            var dbModelData = await dataRepository.GetAsync(id);
-            if (dbModelData == null)
+            using (var transaction = await dataRepository.StartTransaction())
             {
-                return NotFound();
-            }
+                if (dataRepository.GetAsync(id) == null)
+                {
+                    return NotFound();
+                }
 
-            return Ok(dbModelData);
+                var dbModelData = await dataRepository.GetAsync(id);
+                if (dbModelData == null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(dbModelData);
+            }
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> Create(HelpingModelData model)
         {
             if (!ModelState.IsValid)
@@ -72,6 +82,7 @@ namespace CoreApiInNet.Data
             }
         }
         [HttpPut]
+        [Authorize]
         public async Task<IActionResult> Update(FullDataModel dbModelData)
         {
 
@@ -110,6 +121,7 @@ namespace CoreApiInNet.Data
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles ="Administrator")]
         public async Task<IActionResult> Delete(int id)
         {
 

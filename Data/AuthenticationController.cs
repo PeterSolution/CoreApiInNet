@@ -34,5 +34,26 @@ namespace CoreApiInNet.Data
             }
             return Ok();
         }
+
+
+        [HttpPost]
+        [Route("login")]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult> login([FromBody] ApiUserDto userDto)
+        {
+            
+            var authResponse = await authManager.login(userDto);
+            if (authResponse == null)
+            {
+                return Unauthorized("User does not exist");
+            }
+            else
+            {
+
+                return Ok(authResponse);
+            }
+        }
     }
 }
