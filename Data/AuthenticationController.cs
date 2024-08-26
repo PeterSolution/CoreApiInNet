@@ -1,4 +1,5 @@
 ﻿using CoreApiInNet.Contracts;
+using CoreApiInNet.Model;
 using CoreApiInNet.Users;
 using Microsoft.AspNetCore.Mvc;
 
@@ -41,7 +42,7 @@ namespace CoreApiInNet.Data
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult> login([FromBody] ApiUserDto userDto)
+        public async Task<ActionResult> login(ApiUserDto userDto)
         {
             
             var authResponse = await authManager.login(userDto);
@@ -54,6 +55,26 @@ namespace CoreApiInNet.Data
 
                 return Ok(authResponse);
             }
+        }
+        [HttpPost]
+        [Route("refreshtoken")]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult> Refreshtoken(AuthResponse response)
+        {
+
+            var authResponse = await authManager.VerifyToken(response);
+            if (authResponse == null)
+            {
+                return Unauthorized();
+            }
+            else
+            {
+
+                return Ok(authResponse);
+            }
+
         }
     }
 }

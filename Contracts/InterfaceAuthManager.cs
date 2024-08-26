@@ -8,5 +8,7 @@ namespace CoreApiInNet.Contracts
     {
         Task<IEnumerable<IdentityError>> Register(ApiUserDto userDto);
         Task<AuthResponse> login(ApiUserDto userDto);
+        Task<string> CreateNewToken();
+        Task<AuthResponse> VerifyToken(AuthResponse authResponse);
     }
 }

@@ -33,6 +33,12 @@ builder.Services.AddCors(options =>
         .AllowAnyOrigin());
 });
 
+builder.Services.AddIdentityCore<IdentityUser>()
+    .AddRoles<IdentityRole>()
+    .AddTokenProvider<DataProtectorTokenProvider<IdentityUser>>("CoreApiInNet")
+    .AddEntityFrameworkStores<ModelDbContext>()
+    .AddDefaultTokenProviders();
+
 builder.Host.UseSerilog((ctx, lc) => lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
 
 builder.Services.AddAutoMapper(typeof(MapperConfig));

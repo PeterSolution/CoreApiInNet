@@ -19,6 +19,8 @@ namespace CoreApiInNet.Repository
         private readonly IMapper mapper;
         private readonly UserManager<IdentityUser> usermanager;
 
+        private IdentityUser usernick;
+
         public IConfiguration Configuration;
 
         public AuthManager(IMapper mapper, UserManager<IdentityUser> usermanager,
@@ -31,7 +33,7 @@ namespace CoreApiInNet.Repository
 
         public async Task<IEnumerable<IdentityError>> Register(ApiUserDto userDto)
         {
-            var user = mapper.Map<IdentityUser>(userDto);
+            IdentityUser user = mapper.Map<IdentityUser>(userDto);
             user.UserName = userDto.nick;
 
 
@@ -48,7 +50,7 @@ namespace CoreApiInNet.Repository
         public async Task<AuthResponse> login(ApiUserDto userDto)
         {
 
-            var usernick = await usermanager.FindByNameAsync(userDto.nick);
+            usernick = await usermanager.FindByNameAsync(userDto.nick);
             var userpassword = await usermanager.CheckPasswordAsync(usernick, userDto.password);
 
             //return userpassword;
@@ -61,7 +63,8 @@ namespace CoreApiInNet.Repository
             return new AuthResponse
             {
                 Token = token,
-                UserId = usernick.Id
+                UserId = usernick.Id,
+                Refreshtoken = await CreateNewToken()
             };
         }
 
@@ -93,6 +96,44 @@ namespace CoreApiInNet.Repository
                 signingCredentials: credencial
                 );
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+
+        string loginn = "CoreApiInNet";
+        string reftoken = "RefreashToken";
+        public async Task<string> CreateNewToken()
+        {
+            await usermanager.RemoveAuthenticationTokenAsync(usernick, loginn, reftoken);
+            var newtoken = await usermanager.GenerateUserTokenAsync(usernick, loginn, reftoken);
+            var result = await usermanager.SetAuthenticationTokenAsync(usernick, loginn, reftoken, newtoken);
+            return newtoken;
+        }
+
+        public async Task<AuthResponse> VerifyToken(AuthResponse authResponse)
+        {
+            var JsonTokenHandler=new JwtSecurityTokenHandler();
+            var tokencontent=JsonTokenHandler.ReadToken(authResponse.Token) as JwtSecurityToken;
+            var username=tokencontent.Claims.ToList()
+                .FirstOrDefault(q=>q.Type== JwtRegisteredClaimNames.Name).Value;
+            usernick = await usermanager.FindByNameAsync(username);
+            if (usernick == null)
+            {
+                return null;
+            }
+            var IsValidRefreshedToken = await usermanager.VerifyUserTokenAsync(
+                usernick, loginn, reftoken, authResponse.Refreshtoken);
+            if (!IsValidRefreshedToken)
+            {
+                var token = await CreateNewToken();
+                return new AuthResponse
+                {
+                    Token = token,
+                    UserId = usernick.Id,
+                    Refreshtoken = await CreateNewToken()
+                };
+            }
+            await usermanager.UpdateSecurityStampAsync(usernick);
+            return null;
         }
     }
 }
